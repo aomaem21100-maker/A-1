@@ -1,6 +1,7 @@
 """
 Streamlit Web Application for Loan Status Prediction (Self-Contained - Final Version)
 รันด้วยคำสั่ง: streamlit run 2_streamlit_app.py
+ผู้พัฒนา: นายจตุรภัทร สถาปิตานนท์ 664245024
 """
 
 import streamlit as st
@@ -17,18 +18,72 @@ from sklearn.impute import SimpleImputer
 from sklearn.svm import SVC
 
 # ============================================================
-# Page Configuration
+# Custom CSS (เพิ่มสไตล์สำหรับรูปโปรไฟล์)
 # ============================================================
-st.set_page_config(
-    page_title="Loan Status Prediction - SVM",
-    page_icon="💰",
-    layout="wide"
-)
+st.markdown("""
+<style>
+    /* Profile card - จัดกึ่งกลาง */
+    .profile-card {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        margin: 1rem 0;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* บังคับให้รูปอยู่กึ่งกลางและเป็นวงกลม */
+    [data-testid="stImage"] {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+    
+    [data-testid="stImage"] img {
+        border-radius: 50% !important;
+        object-fit: cover !important;
+        border: 4px solid white !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+    
+    /* ซ่อน caption ของรูป (กันชื่อโผล่ใต้รูป) */
+    [data-testid="stImage"] figcaption,
+    [data-testid="stImage"] p {
+        display: none !important;
+    }
+    
+    /* Fallback: รูปวงกลมตัวอักษร (ธีมสีน้ำเงินสำหรับงานการเงิน) */
+    .profile-initials {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        border: 4px solid white;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    .profile-initials span {
+        color: white;
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ============================================================
 # Embedded Data & Model Training Logic
 # ============================================================
-# ข้อมูลตั้งต้นสำหรับฝึกโมเดลอัตโนมัติ (กรณีไม่มีไฟล์เดิม)
 CSV_DATA = """person_age,person_gender,person_education,person_income,person_emp_exp,person_home_ownership,loan_amnt,loan_intent,loan_int_rate,loan_percent_income,cb_person_cred_hist_length,credit_score,previous_loan_defaults_on_file,loan_status
 23.0,female,Associate,53395.0,1.0,OWN,15000.0,EDUCATION,11.01,0.28,3.0,574.0,Yes,0
 23.0,female,Bachelor,60080.0,1.0,RENT,9000.0,MEDICAL,11.01,0.15,2.0,562.0,No,1
@@ -40,7 +95,6 @@ CSV_DATA = """person_age,person_gender,person_education,person_income,person_emp
 24.0,male,Master,37260.0,2.0,MORTGAGE,6000.0,DEBTCONSOLIDATION,13.57,0.16,2.0,634.0,No,0
 26.0,male,Master,37000.0,4.0,MORTGAGE,3500.0,VENTURE,8.0,0.09,4.0,569.0,No,0"""
 
-# รายชื่อ Feature ที่โมเดลคาดหวังตามลำดับ (เพื่อป้องกันมิติข้อมูลสลับที่)
 FEATURE_COLUMNS = [
     'person_age', 'person_gender', 'person_education', 'person_income',
     'person_emp_exp', 'person_home_ownership', 'loan_amnt', 'loan_intent',
@@ -49,27 +103,22 @@ FEATURE_COLUMNS = [
 ]
 
 def get_or_train_model():
-    """โหลดโมเดลจากไฟล์ หรือฝึกใหม่หากไม่พบ/โหลดไม่ได้"""
     model_path = 'svm_loan_model.pkl'
     
-    # พยายามโหลดโมเดลที่บันทึกไว้ก่อน
     if os.path.exists(model_path):
         try:
             return joblib.load(model_path)
         except Exception as e:
-            st.warning(f"⚠️ ไม่สามารถโหลดโมเดลเดิมได้ เนื่องจากข้อผิดพลาดทางระบบ ({type(e).__name__}) จะทำการสร้างและฝึกโมเดลขึ้นมาทดแทนใหม่...")
+            st.warning(f"⚠️ ไม่สามารถโหลดโมเดลเดิมได้ ({type(e).__name__}) จะทำการสร้างและฝึกโมเดลใหม่...")
     
-    # หากไม่มีไฟล์หรือโหลดไม่ได้ ให้ฝึกโมเดลใหม่จากข้อมูลจำลอง
-    with st.spinner("🔧 กำลังเตรียมโครงสร้างข้อมูลและสร้างโมเดล SVM ใหม่เพื่อเริ่มต้นระบบ..."):
+    with st.spinner("🔧 กำลังเตรียมโครงสร้างข้อมูลและสร้างโมเดล SVM ใหม่..."):
         df = pd.read_csv(StringIO(CSV_DATA))
-        
         X = df[FEATURE_COLUMNS]
         y = df['loan_status']
         
         numeric_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
         categorical_features = X.select_dtypes(include=['object']).columns.tolist()
         
-        # ปรับการทำงานของ OneHotEncoder เพื่อรองรับทั้ง scikit-learn เวอร์ชันเก่าและใหม่
         try:
             encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
         except TypeError:
@@ -92,16 +141,12 @@ def get_or_train_model():
             ('classifier', SVC(kernel='rbf', C=1.0, probability=True, random_state=42))
         ])
         
-        # ฝึกสอนโมเดล
         svm_pipeline.fit(X, y)
-        
-        # บันทึกโมเดลไว้ใช้งานในครั้งถัดไป
         joblib.dump(svm_pipeline, model_path)
         st.success("✅ บันทึกโมเดลจำลองลงเครื่องเรียบร้อยแล้ว!")
         
     return svm_pipeline
 
-# โหลดโมเดลผ่านระบบแคชของ Streamlit
 @st.cache_resource
 def load_cached_model():
     return get_or_train_model()
@@ -109,9 +154,42 @@ def load_cached_model():
 model = load_cached_model()
 
 # ============================================================
-# Sidebar
+# Sidebar (เพิ่มรูปผู้พัฒนา + ข้อมูล)
 # ============================================================
 st.sidebar.title("💰 Loan Prediction App")
+st.sidebar.markdown("---")
+
+# 👤 รูปผู้พัฒนา - ลบ caption + จัดกึ่งกลาง
+st.sidebar.markdown("<div class='profile-card'>", unsafe_allow_html=True)
+
+image_files = ["developer.jpg", "developer.png", "profile.jpg", "profile.png", "author.jpg"]
+image_loaded = False
+
+for img_file in image_files:
+    if os.path.exists(img_file):
+        # ✅ ไม่มี parameter caption เพื่อป้องกันชื่อโผล่ใต้รูป
+        st.sidebar.image(img_file, width=120, use_container_width=False)
+        image_loaded = True
+        break
+
+if not image_loaded:
+    # Fallback: แสดงตัวอักษรแทน หากไม่พบไฟล์รูป
+    st.sidebar.markdown("""
+    <div class='profile-initials'>
+        <span>จส</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.sidebar.markdown("</div>", unsafe_allow_html=True)
+
+# ข้อมูลผู้พัฒนา
+st.sidebar.markdown("""
+---
+👨‍💻 **ผู้พัฒนา:** นายจตุรภัทร สถาปิตานนท์  
+🆔 **รหัสนักศึกษา:** 664245024  
+📚 วิชา Machine Learning / Data Science
+""")
+
 st.sidebar.markdown("---")
 st.sidebar.info("""
 **โมเดลหลัก:** Support Vector Machine (SVM)  
@@ -135,55 +213,21 @@ col1, col2, col3 = st.columns(3)
 with col1:
     person_age = st.number_input("อายุ (Age)", min_value=18, max_value=100, value=25, step=1)
     person_gender = st.selectbox("เพศ (Gender)", ["male", "female"])
-    person_education = st.selectbox(
-        "ระดับการศึกษา (Education)",
-        ["High School", "Associate", "Bachelor", "Master", "Doctorate"]
-    )
-    person_income = st.number_input(
-        "รายได้ต่อปี (Annual Income)", min_value=0, value=50000, step=1000,
-        help="หน่วย: ดอลลาร์สหรัฐ ($)"
-    )
+    person_education = st.selectbox("ระดับการศึกษา (Education)", ["High School", "Associate", "Bachelor", "Master", "Doctorate"])
+    person_income = st.number_input("รายได้ต่อปี (Annual Income)", min_value=0, value=50000, step=1000, help="หน่วย: ดอลลาร์สหรัฐ ($)")
 
 with col2:
-    person_emp_exp = st.number_input(
-        "ปีประสบการณ์ทำงาน (Work Experience)",
-        min_value=0, max_value=50, value=3, step=1
-    )
-    person_home_ownership = st.selectbox(
-        "สถานะที่อยู่อาศัย (Home Ownership)",
-        ["RENT", "MORTGAGE", "OWN", "OTHER"]
-    )
-    loan_amnt = st.number_input(
-        "จำนวนเงินที่ขอกู้ (Loan Amount)", min_value=0, value=10000, step=500
-    )
-    loan_intent = st.selectbox(
-        "วัตถุประสงค์การใช้เงินกู้ (Loan Intent)",
-        ["PERSONAL", "EDUCATION", "MEDICAL", "VENTURE",
-         "HOMEIMPROVEMENT", "DEBTCONSOLIDATION"]
-    )
+    person_emp_exp = st.number_input("ปีประสบการณ์ทำงาน (Work Experience)", min_value=0, max_value=50, value=3, step=1)
+    person_home_ownership = st.selectbox("สถานะที่อยู่อาศัย (Home Ownership)", ["RENT", "MORTGAGE", "OWN", "OTHER"])
+    loan_amnt = st.number_input("จำนวนเงินที่ขอกู้ (Loan Amount)", min_value=0, value=10000, step=500)
+    loan_intent = st.selectbox("วัตถุประสงค์การใช้เงินกู้ (Loan Intent)", ["PERSONAL", "EDUCATION", "MEDICAL", "VENTURE", "HOMEIMPROVEMENT", "DEBTCONSOLIDATION"])
 
 with col3:
-    loan_int_rate = st.number_input(
-        "อัตราดอกเบี้ย (%)", min_value=0.0, max_value=30.0,
-        value=10.0, step=0.1
-    )
-    loan_percent_income = st.number_input(
-        "สัดส่วนเงินกู้ต่อรายได้ (Loan-to-Income Ratio)", min_value=0.0, max_value=1.0,
-        value=0.10, step=0.01,
-        help="เช่น 0.10 หมายถึง เงินกู้คิดเป็น 10% ของรายได้ต่อปี"
-    )
-    cb_person_cred_hist_length = st.number_input(
-        "ระยะเวลาประวัติเครดิต (ปี)",
-        min_value=0, max_value=50, value=5, step=1
-    )
-    credit_score = st.number_input(
-        "คะแนนเครดิต (Credit Score)",
-        min_value=300, max_value=850, value=650, step=10
-    )
-    previous_loan_defaults = st.selectbox(
-        "เคยมีประวัติผิดนัดชำระหนี้มาก่อนหรือไม่?",
-        ["No", "Yes"]
-    )
+    loan_int_rate = st.number_input("อัตราดอกเบี้ย (%)", min_value=0.0, max_value=30.0, value=10.0, step=0.1)
+    loan_percent_income = st.number_input("สัดส่วนเงินกู้ต่อรายได้ (Loan-to-Income Ratio)", min_value=0.0, max_value=1.0, value=0.10, step=0.01, help="เช่น 0.10 หมายถึง เงินกู้คิดเป็น 10% ของรายได้ต่อปี")
+    cb_person_cred_hist_length = st.number_input("ระยะเวลาประวัติเครดิต (ปี)", min_value=0, max_value=50, value=5, step=1)
+    credit_score = st.number_input("คะแนนเครดิต (Credit Score)", min_value=300, max_value=850, value=650, step=10)
+    previous_loan_defaults = st.selectbox("เคยมีประวัติผิดนัดชำระหนี้มาก่อนหรือไม่?", ["No", "Yes"])
 
 # ============================================================
 # Single Prediction Logic
@@ -195,7 +239,6 @@ with col_btn2:
     predict_button = st.button("🔮 เริ่มทำนายผล", use_container_width=True, type="primary")
 
 if predict_button:
-    # 1. รวบรวมข้อมูลให้อยู่ในรูป DataFrame และบังคับประเภทตัวแปรให้ตรงกับ Pipeline
     input_data = pd.DataFrame({
         'person_age': [float(person_age)],
         'person_gender': [person_gender],
@@ -212,7 +255,6 @@ if predict_button:
         'previous_loan_defaults_on_file': [previous_loan_defaults]
     })
     
-    # 2. บังคับลำดับคอลัมน์ให้ตรงตามโครงสร้างแรกสุดของ Pipeline
     input_data = input_data[FEATURE_COLUMNS]
     
     with st.spinner("ระบบกำลังประมวลผลผ่านโมเดล SVM..."):
@@ -244,7 +286,7 @@ if predict_button:
         st.dataframe(input_data.T.rename(columns={0: 'ค่าตัวแปร'}))
 
 # ============================================================
-# Batch Prediction (ทำนายแบบกลุ่ม)
+# Batch Prediction
 # ============================================================
 st.markdown("---")
 st.header("📂 ทำนายผลแบบกลุ่มผ่านไฟล์ CSV")
@@ -257,7 +299,6 @@ if uploaded_file is not None:
         df_input = pd.read_csv(uploaded_file)
         st.write(f"📊 ตรวจพบข้อมูลในไฟล์ทั้งหมด: `{df_input.shape[0]}` รายการ")
         
-        # ค้นหาคอลัมน์ที่โมเดลต้องการแต่ไม่มีในไฟล์ CSV
         missing_cols = [col for col in FEATURE_COLUMNS if col not in df_input.columns]
         
         if len(missing_cols) > 0:
@@ -268,19 +309,15 @@ if uploaded_file is not None:
             
             if st.button("🚀 ประมวลผลกลุ่มทั้งหมด", type="primary"):
                 with st.spinner("ระบบกำลังคำนวณผลลัพธ์จากข้อมูลชุดใหญ่..."):
-                    # แปลงประเภทข้อมูลของตัวเลขใน CSV ให้อยู่ในรูป float เพื่อป้องกันข้อผิดพลาดของสเกลเลอร์
                     df_to_predict = df_input[FEATURE_COLUMNS].copy()
-                    
                     num_cols = ['person_age', 'person_income', 'person_emp_exp', 'loan_amnt', 
                                 'loan_int_rate', 'loan_percent_income', 'cb_person_cred_hist_length', 'credit_score']
                     for col in num_cols:
                         df_to_predict[col] = df_to_predict[col].astype(float)
                         
-                    # ดำเนินการทำนาย
                     batch_predictions = model.predict(df_to_predict)
                     batch_probabilities = model.predict_proba(df_to_predict)
                 
-                # เขียนผลลัพธ์เพิ่มเข้าในตารางเดิม
                 df_result = df_input.copy()
                 df_result['Prediction'] = batch_predictions
                 df_result['Prediction_Status'] = df_result['Prediction'].map({0: 'Approved', 1: 'Default'})
@@ -302,7 +339,6 @@ if uploaded_file is not None:
                 
                 st.dataframe(df_result)
                 
-                # ส่งออกผลลัพธ์เป็น CSV เพื่อดาวน์โหลด
                 csv_download = df_result.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="💾 ดาวน์โหลดตารางผลลัพธ์การอนุมัติ (CSV)",
@@ -315,13 +351,19 @@ if uploaded_file is not None:
         st.error(f"❌ เกิดข้อผิดพลาดระหว่างจัดระเบียบข้อมูล: {e}")
 
 # ============================================================
-# Footer
+# Footer (เพิ่มข้อมูลผู้พัฒนา)
 # ============================================================
 st.markdown("---")
 st.markdown(
     """
-    <div style='text-align: center; color: gray;'>
-    <small>ระบบถูกพัฒนาและพร้อมรันแบบสมบูรณ์บนเซิร์ฟเวอร์ | อัปเดตโครงสร้างความปลอดภัยแล้ว</small>
+    <div style='text-align: center; color: gray; padding: 1rem;'>
+        <p>🎓 พัฒนาเป็นส่วนหนึ่งของวิชา การโปรแกรมสำหรับการเรียนรู้ด้วยเครื่องด้วยภาษาไพทอน</p>
+        <p>
+            👨‍💻 <strong style='color: #333;'>ผู้พัฒนา:</strong> นายจตุรภัทร สถาปิตานนท์ 
+            &nbsp;|&nbsp; 
+            🆔 <strong style='color: #333;'>รหัสนักศึกษา:</strong> 664245024
+        </p>
+        <small>ระบบถูกพัฒนาและพร้อมรันแบบสมบูรณ์บนเซิร์ฟเวอร์ | อัปเดตโครงสร้างความปลอดภัยแล้ว</small>
     </div>
     """,
     unsafe_allow_html=True
