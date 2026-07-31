@@ -1,6 +1,6 @@
 """
-Streamlit Web Application for Loan Status Prediction (Self-Contained - Final Version)
-รันด้วยคำสั่ง: streamlit run 2_streamlit_app.py
+Streamlit Web Application for Loan Status Prediction
+รันด้วยคำสั่ง: streamlit run app.py
 ผู้พัฒนา: นายจตุรภัทร สถาปิตานนท์ 664245024
 """
 
@@ -10,7 +10,6 @@ import numpy as np
 import joblib
 import os
 from io import StringIO
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -18,48 +17,24 @@ from sklearn.impute import SimpleImputer
 from sklearn.svm import SVC
 
 # ============================================================
-# Custom CSS (เพิ่มสไตล์สำหรับรูปโปรไฟล์)
+# 1. Custom CSS (จัดรูปแบบให้สวยงาม + จัดกึ่งกลาง + ซ่อน Caption)
 # ============================================================
 st.markdown("""
 <style>
-    /* Profile card - จัดกึ่งกลาง */
-    .profile-card {
-        text-align: center;
-        padding: 1rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 15px;
-        margin: 1rem 0;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+    /* กล่องรวมรูปโปรไฟล์ */
+    .profile-container {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        padding: 1.5rem 1rem;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 15px;
+        margin: 1rem 0;
+        border: 1px solid rgba(255, 255, 255, 0.15);
     }
     
-    /* บังคับให้รูปอยู่กึ่งกลางและเป็นวงกลม */
-    [data-testid="stImage"] {
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        width: 100% !important;
-    }
-    
-    [data-testid="stImage"] img {
-        border-radius: 50% !important;
-        object-fit: cover !important;
-        border: 4px solid white !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
-        margin: 0 auto !important;
-        display: block !important;
-    }
-    
-    /* ซ่อน caption ของรูป (กันชื่อโผล่ใต้รูป) */
-    [data-testid="stImage"] figcaption,
-    [data-testid="stImage"] p {
-        display: none !important;
-    }
-    
-    /* Fallback: รูปวงกลมตัวอักษร (ธีมสีน้ำเงินสำหรับงานการเงิน) */
+    /* วงกลมตัวอักษร (Fallback กรณีไม่มีไฟล์รูป) */
     .profile-initials {
         width: 120px;
         height: 120px;
@@ -68,21 +43,49 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto;
         border: 4px solid white;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        margin-bottom: 10px;
     }
     
     .profile-initials span {
         color: white;
         font-size: 2.5rem;
         font-weight: bold;
+        font-family: 'Sarabun', sans-serif;
+    }
+    
+    /* บังคับให้ st.image อยู่กึ่งกลางและเป็นวงกลม */
+    .stImage {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
+    
+    .stImage img {
+        border-radius: 50% !important;
+        border: 4px solid white !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+        object-fit: cover !important;
+        margin: 0 auto !important;
+    }
+    
+    /* ซ่อนข้อความใต้รูป (Caption) อย่างเด็ดขาด */
+    .stImage figcaption, .stImage p {
+        display: none !important;
+    }
+    
+    /* ข้อความใน Sidebar */
+    .sidebar-text {
+        color: white !important;
+        text-align: center;
+        margin-top: 0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# Embedded Data & Model Training Logic
+# 2. Embedded Data & Model Training Logic
 # ============================================================
 CSV_DATA = """person_age,person_gender,person_education,person_income,person_emp_exp,person_home_ownership,loan_amnt,loan_intent,loan_int_rate,loan_percent_income,cb_person_cred_hist_length,credit_score,previous_loan_defaults_on_file,loan_status
 23.0,female,Associate,53395.0,1.0,OWN,15000.0,EDUCATION,11.01,0.28,3.0,574.0,Yes,0
@@ -143,7 +146,6 @@ def get_or_train_model():
         
         svm_pipeline.fit(X, y)
         joblib.dump(svm_pipeline, model_path)
-        st.success("✅ บันทึกโมเดลจำลองลงเครื่องเรียบร้อยแล้ว!")
         
     return svm_pipeline
 
@@ -154,26 +156,26 @@ def load_cached_model():
 model = load_cached_model()
 
 # ============================================================
-# Sidebar (เพิ่มรูปผู้พัฒนา + ข้อมูล)
+# 3. Sidebar (รูปผู้พัฒนา + ข้อมูล)
 # ============================================================
 st.sidebar.title("💰 Loan Prediction App")
 st.sidebar.markdown("---")
 
-# 👤 รูปผู้พัฒนา - ลบ caption + จัดกึ่งกลาง
-st.sidebar.markdown("<div class='profile-card'>", unsafe_allow_html=True)
+# ส่วนแสดงรูปโปรไฟล์
+st.sidebar.markdown("<div class='profile-container'>", unsafe_allow_html=True)
 
 image_files = ["developer.jpg", "developer.png", "profile.jpg", "profile.png", "author.jpg"]
-image_loaded = False
+image_found = False
 
 for img_file in image_files:
     if os.path.exists(img_file):
-        # ✅ ไม่มี parameter caption เพื่อป้องกันชื่อโผล่ใต้รูป
+        # ✅ ไม่ใส่ caption เพื่อให้ไม่มีข้อความใต้รูป
         st.sidebar.image(img_file, width=120, use_container_width=False)
-        image_loaded = True
+        image_found = True
         break
 
-if not image_loaded:
-    # Fallback: แสดงตัวอักษรแทน หากไม่พบไฟล์รูป
+if not image_found:
+    # ✅ Fallback: แสดงวงกลมตัวอักษร "จส" แทน หากไม่พบไฟล์รูป
     st.sidebar.markdown("""
     <div class='profile-initials'>
         <span>จส</span>
@@ -182,13 +184,14 @@ if not image_loaded:
 
 st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
-# ข้อมูลผู้พัฒนา
+# ข้อมูลผู้พัฒนา (แสดงใต้รูปลงมา)
 st.sidebar.markdown("""
----
-👨‍💻 **ผู้พัฒนา:** นายจตุรภัทร สถาปิตานนท์  
-🆔 **รหัสนักศึกษา:** 664245024  
-📚 วิชา Machine Learning / Data Science
-""")
+<div class='sidebar-text'>
+    👨‍💻 <b>ผู้พัฒนา:</b> นายจตุรภัทร สถาปิตานนท์<br>
+    🆔 <b>รหัสนักศึกษา:</b> 664245024<br>
+    📚 วิชา Machine Learning / Data Science
+</div>
+""", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 st.sidebar.info("""
@@ -198,14 +201,11 @@ st.sidebar.info("""
 """)
 
 # ============================================================
-# Main Title
+# 4. Main Title & Input Form
 # ============================================================
 st.title("🏦 ระบบทำนายสถานะการอนุมัติเงินกู้")
 st.markdown("กรุณาป้อนข้อมูลของผู้ขอสินเชื่อเพื่อประเมินความเสี่ยงและการอนุมัติด้วยระบบ AI (SVM)")
 
-# ============================================================
-# Input Form
-# ============================================================
 st.header("📝 ส่วนกรอกข้อมูลรายบุคคล")
 
 col1, col2, col3 = st.columns(3)
@@ -230,7 +230,7 @@ with col3:
     previous_loan_defaults = st.selectbox("เคยมีประวัติผิดนัดชำระหนี้มาก่อนหรือไม่?", ["No", "Yes"])
 
 # ============================================================
-# Single Prediction Logic
+# 5. Single Prediction Logic
 # ============================================================
 st.markdown("---")
 col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
@@ -286,11 +286,11 @@ if predict_button:
         st.dataframe(input_data.T.rename(columns={0: 'ค่าตัวแปร'}))
 
 # ============================================================
-# Batch Prediction
+# 6. Batch Prediction
 # ============================================================
 st.markdown("---")
 st.header("📂 ทำนายผลแบบกลุ่มผ่านไฟล์ CSV")
-st.write("คุณสามารถโยนไฟล์ฐานข้อมูลลูกค้ารายการใหญ่ เพื่อทำนายสถานะพร้อมกันในรอบเดียวได้")
+st.write("คุณสามารถอัปโหลดไฟล์ฐานข้อมูลลูกค้ารายการใหญ่ เพื่อทำนายสถานะพร้อมกันในรอบเดียวได้")
 
 uploaded_file = st.file_uploader("เลือกไฟล์ข้อมูลผู้กู้ยืม (.csv)", type=['csv'])
 
@@ -351,7 +351,7 @@ if uploaded_file is not None:
         st.error(f"❌ เกิดข้อผิดพลาดระหว่างจัดระเบียบข้อมูล: {e}")
 
 # ============================================================
-# Footer (เพิ่มข้อมูลผู้พัฒนา)
+# 7. Footer
 # ============================================================
 st.markdown("---")
 st.markdown(
@@ -363,7 +363,7 @@ st.markdown(
             &nbsp;|&nbsp; 
             🆔 <strong style='color: #333;'>รหัสนักศึกษา:</strong> 664245024
         </p>
-        <small>ระบบถูกพัฒนาและพร้อมรันแบบสมบูรณ์บนเซิร์ฟเวอร์ | อัปเดตโครงสร้างความปลอดภัยแล้ว</small>
+        <small>ระบบถูกพัฒนาและพร้อมรันแบบสมบูรณ์ | อัปเดตโครงสร้างความปลอดภัยแล้ว</small>
     </div>
     """,
     unsafe_allow_html=True
